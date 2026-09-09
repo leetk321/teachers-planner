@@ -1,0 +1,25 @@
+{
+  "name": "teacher-notebook-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/index-local.js",
+    "dev:pg": "node src/index.js",
+    "start": "node src/index-local.js",
+    "db:verify": "node scripts/verify-sqlite-migrations.mjs",
+    "health:api": "node scripts/check-api-health.mjs",
+    "health:auth-smoke": "node scripts/smoke-auth-roundtrip.mjs",
+    "verify:local": "npm run db:verify && npm run health:api && npm run health:auth-smoke"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "4.22.2",
+    "multer": "2.2.0",
+    "pg": "^8.12.0"
+  },
+  "overrides": {
+    "path-to-regexp": "0.1.13"
+  }
+}

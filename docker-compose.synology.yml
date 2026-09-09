@@ -1,0 +1,76 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${TEACHER_NOTEBOOK_VERSION:-3.16.0}
+    image: ${TEACHER_API_IMAGE:-teacher-notebook-api}:${TEACHER_NOTEBOOK_VERSION:-3.16.0}
+    container_name: teacher-api
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Seoul
+      PORT: "4000"
+      DATA_DIR: /app/apps/api/.data
+      SQLITE_PATH: /app/apps/api/.data/local.db
+      BACKUP_DIR: /app/apps/api/.data/backups
+      UPLOAD_DIR: /app/apps/api/.data/uploads
+      STUDENT_PHOTO_DIR: /app/apps/api/.data/student-photos
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://note.example.com}
+      KMA_AUTH_KEY: ${KMA_AUTH_KEY:-}
+      TEACHER_NOTEBOOK_ADMIN_BOOTSTRAP_TOKEN: ${TEACHER_NOTEBOOK_ADMIN_BOOTSTRAP_TOKEN:-}
+      DATA_VOLUME_REQUIRE_MARKER: ${DATA_VOLUME_REQUIRE_MARKER:-true}
+      BACKUP_RETAIN_COUNT: ${BACKUP_RETAIN_COUNT:-30}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-90}
+    volumes:
+      - ${DATA_HOST_PATH:-/volume1/docker/teacher-notebook-data}:/app/apps/api/.data
+    ports:
+      - "${API_PORT:-4000}:4000"
+    healthcheck:
+      test: ["CMD", "node", "scripts/container-readiness.mjs"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    init: true
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${TEACHER_NOTEBOOK_VERSION:-3.16.0}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.note.example.com}
+    image: ${TEACHER_WEB_IMAGE:-teacher-notebook-web}:${TEACHER_NOTEBOOK_VERSION:-3.16.0}
+    container_name: teacher-web
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Seoul
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://api.note.example.com}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/').then((response) => { if (!response.ok) process.exit(1); }).catch(() => process.exit(1));"
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    init: true
+    stop_grace_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
